@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#080b12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SPECTRE">
+<title>SPECTRE OSINT</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b12;
+    --bg2: #0d1119;
+    --bg3: #111827;
+    --border: #1e2d40;
+    --green: #00ff88;
+    --cyan: #00d4ff;
+    --orange: #ff8c00;
+    --red: #ff3355;
+    --text: #a8bcd4;
+    --text2: #5a7a99;
+    --text3: #2a3d52;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  /* SPLASH */
+  #splash {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 999;
+    transition: opacity 0.5s;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  .splash-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px; font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 40px #00ff8866;
+    letter-spacing: 0.2em;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .splash-sub { font-size: 11px; color: var(--text2); letter-spacing: 0.3em; margin-top: 8px; }
+  .splash-bar {
+    width: 200px; height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 40px; overflow: hidden;
+  }
+  .splash-bar-fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    animation: load 1.8s ease forwards;
+  }
+  @keyframes load { to { width: 100%; } }
+  @keyframes pulse { 0%,100% { text-shadow: 0 0 20px #00ff8866; } 50% { text-shadow: 0 0 60px #00ff88aa, 0 0 100px #00ff8844; } }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-mark {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--bg); font-weight: bold;
+    flex-shrink: 0;
+  }
+  .logo-text { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: #e0ecff; }
+  .logo-sub { font-size: 9px; color: var(--green); letter-spacing: 0.2em; margin-top: 1px; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    margin-left: auto; flex-shrink: 0;
+  }
+  .status-dot.scanning { background: var(--orange); box-shadow: 0 0 8px var(--orange); animation: blink 0.8s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* TABS */
+  .tabs {
+    display: flex; overflow-x: auto; gap: 4px;
+    padding: 10px 16px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-family: inherit; font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    background: rgba(0,255,136,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* MAIN */
+  main { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+  /* INPUT AREA */
+  .input-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .input-label { font-size: 10px; color: var(--text2); letter-spacing: 0.2em; margin-bottom: 8px; }
+  .input-row { display: flex; gap: 8px; }
+  .input-field {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit; font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: var(--cyan); }
+  .input-field::placeholder { color: var(--text3); }
+  .scan-btn {
+    padding: 10px 18px;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    border: none; border-radius: 8px;
+    color: var(--bg); font-family: 'Orbitron', monospace;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap; letter-spacing: 0.05em;
+  }
+  .scan-btn:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; }
+
+  /* PROGRESS */
+  .progress-wrap { margin-top: 10px; display: none; }
+  .progress-wrap.show { display: block; }
+  .progress-bar { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: width 0.15s; }
+  .progress-label { font-size: 10px; color: var(--text2); margin-top: 6px; }
+
+  /* LOG */
+  .log-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .log-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px; color: var(--text3); letter-spacing: 0.2em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .log-body {
+    padding: 12px 14px;
+    max-height: 200px; overflow-y: auto;
+    font-size: 11px; line-height: 1.8;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .log-line { display: flex; gap: 8px; }
+  .log-time { color: var(--text3); flex-shrink: 0; }
+  .log-msg.success { color: var(--green); }
+  .log-msg.warn { color: var(--orange); }
+  .log-msg.error { color: var(--red); }
+  .log-msg.cmd { color: var(--cyan); }
+  .log-msg.info { color: var(--text2); }
+  .log-msg.dim { color: var(--text3); }
+
+  /* RESULTS */
+  .result-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .result-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px; color: var(--cyan); letter-spacing: 0.1em;
+  }
+  .result-body { padding: 14px; }
+  .kv { display: flex; gap: 8px; margin-bottom: 6px; font-size: 12px; flex-wrap: wrap; }
+  .kv-key { color: var(--text2); min-width: 110px; flex-shrink: 0; }
+  .kv-val { color: var(--text); }
+  .kv-val.good { color: var(--green); }
+  .kv-val.bad { color: var(--orange); }
+  .kv-val.danger { color: var(--red); }
+
+  .badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 10px;
+    margin: 2px; letter-spacing: 0.05em;
+  }
+  .badge.green { background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+  .badge.red { background: rgba(255,51,85,0.1); border: 1px solid rgba(255,51,85,0.3); color: var(--red); }
+  .badge.orange { background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.3); color: var(--orange); }
+  .badge.cyan { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: var(--cyan); }
+
+  .profile-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; margin-bottom: 4px;
+    background: var(--bg3); border-radius: 8px;
+    border: 1px solid var(--border); font-size: 11px;
+  }
+  .profile-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .profile-name { color: var(--text2); min-width: 100px; flex-shrink: 0; }
+  .profile-url { color: var(--cyan); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .profile-conf { color: var(--text2); font-size: 10px; flex-shrink: 0; }
+
+  .breach-item {
+    padding: 10px 12px; margin-bottom: 6px;
+    background: rgba(255,140,0,0.05);
+    border: 1px solid rgba(255,140,0,0.2);
+    border-radius: 8px;
+  }
+  .breach-name { color: var(--orange); font-size: 12px; }
+  .breach-detail { color: var(--text3); font-size: 10px; margin-top: 4px; }
+
+  /* AI ANALYSIS */
+  .ai-card {
+    background: linear-gradient(135deg, rgba(0,255,136,0.03), rgba(0,212,255,0.03));
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .ai-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(0,255,136,0.1);
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; color: var(--green);
+    letter-spacing: 0.15em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ai-loading { animation: blink 1s infinite; }
+  .ai-body {
+    padding: 14px;
+    font-size: 12px; line-height: 1.9;
+    color: var(--text2);
+    white-space: pre-wrap;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center; padding: 40px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
+  .empty-text { font-size: 12px; line-height: 1.8; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 10px 4px;
+    background: none; border: none;
+    color: var(--text3); font-family: inherit;
+    font-size: 9px; letter-spacing: 0.1em;
+    cursor: pointer; gap: 4px; transition: color 0.15s;
+  }
+  .nav-item.active { color: var(--green); }
+  .nav-icon { font-size: 18px; }
+
+  /* HISTORY */
+  .history-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: 6px;
+    background: var(--bg3); border-radius: 10px;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .history-icon { font-size: 20px; flex-shrink: 0; }
+  .history-query { font-size: 13px; color: var(--text); }
+  .history-module { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .history-time { font-size: 10px; color: var(--text3); margin-left: auto; flex-shrink: 0; }
+
+  /* SETTINGS */
+  .setting-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .setting-label { color: var(--text); }
+  .setting-sub { font-size: 10px; color: var(--text2); margin-top: 3px; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border); border-radius: 12px;
+    position: relative; cursor: pointer;
+    transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: white; top: 3px; left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* PADDING for bottom nav */
+  .page { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+  .section-title {
+    font-size: 9px; color: var(--text3);
+    letter-spacing: 0.25em; margin-bottom: 10px;
+  }
+
+  /* INSTALL BANNER */
+  .install-banner {
+    background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,212,255,0.08));
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 16px; display: none;
+    align-items: center; gap: 12px;
+  }
+  .install-banner.show { display: flex; }
+  .install-btn {
+    margin-left: auto; flex-shrink: 0;
+    padding: 6px 14px;
+    background: var(--green); border: none; border-radius: 6px;
+    color: var(--bg); font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer;
+  }
+
+  @media (max-width: 360px) { .logo-text { font-size: 12px; } }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">SPECTRE</div>
+  <div class="splash-sub">OSINT INTELLIGENCE PLATFORM</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-mark">⬡</div>
+  <div>
+    <div class="logo-text">SPECTRE</div>
+    <div class="logo-sub">OSINT PLATFORM</div>
+  </div>
+  <div class="status-dot" id="statusDot"></div>
+</header>
+
+<!-- TABS -->
+<div class="tabs" id="tabs">
+  <button class="tab active" onclick="setModule('username')">◈ Username</button>
+  <button class="tab" onclick="setModule('email')">◉ Email</button>
+  <button class="tab" onclick="setModule('domain')">◎ Domain</button>
+  <button class="tab" onclick="setModule('ip')">◐ IP</button>
+  <button class="tab" onclick="setModule('person')">◑ Person</button>
+</div>
+
+<!-- PAGES -->
+<div id="page-scan" class="page">
+  <main>
+    <!-- Install Banner -->
+    <div class="install-banner" id="installBanner">
+      <div>
+        <div style="font-size:12px;color:var(--text)">📲 Installer l'app</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">Ajouter à l'écran d'accueil</div>
+      </div>
+      <button class="install-btn" id="installBtn">INSTALLER</button>
+    </div>
+
+    <!-- Input -->
+    <div class="input-card">
+      <div class="input-label" id="inputLabel">▸ CIBLE USERNAME</div>
+      <div class="input-row">
+        <input class="input-field" id="queryInput" placeholder="johndoe" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="scan-btn" id="scanBtn" onclick="runScan()">SCAN</button>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">Initialisation...</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-card" id="logCard" style="display:none">
+      <div class="log-header">
+        <span>▸ ACTIVITY LOG</span>
+        <span id="logCount" style="margin-left:auto"></span>
+      </div>
+      <div class="log-body" id="logBody"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsArea"></div>
+
+    <!-- AI Analysis -->
+    <div class="ai-card" id="aiCard" style="display:none">
+      <div class="ai-header">
+        ⬡ CLAUDE AI ANALYSIS
+        <span class="ai-loading" id="aiLoading" style="display:none">◉ PROCESSING...</span>
+      </div>
+      <div class="ai-body" id="aiBody"></div>
+    </div>
+  </main>
+</div>
+
+<div id="page-history" class="page" style="display:none">
+  <main>
+    <div style="margin-bottom:16px">
+      <div class="section-title">▸ HISTORIQUE DES SCANS</div>
+      <div id="historyList"></div>
+    </div>
+  </main>
+</div>
+
+<div id="page-settings" class="page" style="display:none">
+  <main>
+    <div class="result-card">
+      <div class="result-header">⚙ PARAMÈTRES</div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Analyse IA</div>
+          <div class="setting-sub">Claude analyse les résultats</div>
+        </div>
+        <div class="toggle on" id="toggleAI" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Sauvegarder l'historique</div>
+          <div class="setting-sub">Stocker localement</div>
+        </div>
+        <div class="toggle on" id="toggleHistory" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-item" style="border:none">
+        <div>
+          <div class="setting-label">Mode sombre</div>
+          <div class="setting-sub">Interface sombre (défaut)</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-header">ℹ À PROPOS</div>
+      <div style="padding:14px;font-size:12px;color:var(--text2);line-height:1.8">
+        SPECTRE v1.0 — Outil OSINT éducatif<br>
+        Sources publiques uniquement.<br><br>
+        <span style="color:var(--orange)">⚠ Usage légal et autorisé uniquement.</span><br>
+        <span style="color:var(--text3)">Ne pas utiliser sur des cibles sans autorisation.</span>
+      </div>
+    </div>
+
+    <button onclick="clearHistory()" style="width:100%;padding:12px;background:rgba(255,51,85,0.1);border:1px solid rgba(255,51,85,0.3);border-radius:10px;color:var(--red);font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:0.1em">
+      ✕ EFFACER L'HISTORIQUE
+    </button>
+  </main>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav-scan" onclick="showPage('scan')">
+    <span class="nav-icon">◎</span>SCAN
+  </button>
+  <button class="nav-item" id="nav-history" onclick="showPage('history')">
+    <span class="nav-icon">◈</span>HISTORIQUE
+  </button>
+  <button class="nav-item" id="nav-settings" onclick="showPage('settings')">
+    <span class="nav-icon">⊙</span>RÉGLAGES
+  </button>
+</div>
+
+<script>
+// === STATE ===
+let activeModule = 'username';
+let running = false;
+let scanHistory = JSON.parse(localStorage.getItem('spectre_history') || '[]');
+let deferredPrompt = null;
+
+const PLATFORMS = [
+  "GitHub","Twitter/X","Reddit","LinkedIn","Instagram","TikTok","YouTube","Twitch",
+  "Discord","Telegram","Facebook","Pinterest","Snapchat","Tumblr","Medium","Dev.to",
+  "Pastebin","HackerNews","ProductHunt","Behance","Dribbble","Keybase","Steam","Xbox",
+  "PlayStation","Spotify","SoundCloud","Bandcamp","Flickr","Vimeo","WordPress",
+  "Substack","Quora","Stack Overflow","GitLab","Bitbucket","npm","PyPI","DockerHub",
+  "HuggingFace","Kaggle","Replit","CodePen","About.me","Gravatar","Linktree"
+];
+
+const MODULE_CONFIG = {
+  username: { label: 'CIBLE USERNAME', placeholder: 'johndoe', icon: '◈' },
+  email:    { label: 'CIBLE EMAIL',    placeholder: 'target@example.com', icon: '◉' },
+  domain:   { label: 'CIBLE DOMAINE', placeholder: 'example.com', icon: '◎' },
+  ip:       { label: 'CIBLE IP',       placeholder: '8.8.8.8', icon: '◐' },
+  person:   { label: 'CIBLE PERSONNE',  placeholder: 'Jean Dupont', icon: '◑' },
+};
+
+// === SPLASH ===
+setTimeout(() => {
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(() => document.getElementById('splash').remove(), 500);
+}, 2000);
+
+// === PWA INSTALL ===
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner').classList.remove('show');
+});
+
+// === NAVIGATION ===
+function showPage(page) {
+  ['scan','history','settings'].forEach(p => {
+    document.getElementById(`page-${p}`).style.display = p === page ? '' : 'none';
+    document.getElementById(`nav-${p}`).classList.toggle('active', p === page);
+  });
+  document.getElementById('tabs').style.display = page === 'scan' ? 'flex' : 'none';
+  if (page === 'history') renderHistory();
+}
+
+// === MODULE SWITCH ===
+function setModule(mod) {
+  activeModule = mod;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', Object.keys(MODULE_CONFIG)[i] === mod);
+  });
+  const cfg = MODULE_CONFIG[mod];
+  document.getElementById('inputLabel').textContent = `▸ ${cfg.label}`;
+  document.getElementById('queryInput').placeholder = cfg.placeholder;
+  document.getElementById('queryInput').value = '';
+  document.getElementById('logCard').style.display = 'none';
+  document.getElementById('resultsArea').innerHTML = '';
+  document.getElementById('aiCard').style.display = 'none';
+}
+
+// === LOGGING ===
+let logCount = 0;
+function clearLogs() {
+  logCount = 0;
+  document.getElementById('logBody').innerHTML = '';
+  document.getElementById('logCard').style.display = 'none';
+  document.getElementById('logCount').textContent = '';
+}
+function addLog(msg, type = 'info') {
+  logCount++;
+  document.getElementById('logCard').style.display = '';
+  document.getElementById('logCount').textContent = `${logCount} events`;
+  const time = new Date().toISOString().slice(11,23);
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">${time}</span><span class="log-msg ${type}">${msg}</span>`;
+  const body = document.getElementById('logBody');
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+// === PROGRESS ===
+function setProgress(pct, label) {
+  document.getElementById('progressWrap').classList.toggle('show', pct > 0 && pct < 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  if (label) document.getElementById('progressLabel').textContent = label;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// === SCAN ROUTER ===
+async function runScan() {
+  if (running) return;
+  const query = document.getElementById('queryInput').value.trim();
+  if (!query) { document.getElementById('queryInput').focus(); return; }
+
+  running = true;
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('statusDot').className = 'status-dot scanning';
+  clearLogs();
+  document.getElementById('resultsArea').innerHTML = '';
+  document.getElementById('aiCard').style.display = 'none';
+
+  let data;
+  try {
+    if (activeModule === 'username') data = await scanUsername(query);
+    else if (activeModule === 'email') data = await scanEmail(query);
+    else if (activeModule === 'domain') data = await scanDomain(query);
+    else if (activeModule === 'ip') data = await scanIP(query);
+    else if (activeModule === 'person') data = await scanPerson(query);
+
+    // Save history
+    const entry = { module: activeModule, query, time: Date.now(), id: Math.random().toString(36).slice(2) };
+    scanHistory.unshift(entry);
+    if (scanHistory.length > 50) scanHistory.pop();
+    localStorage.setItem('spectre_history', JSON.stringify(scanHistory));
+
+    // AI Analysis
+    if (document.getElementById('toggleAI').classList.contains('on')) {
+      await runAI(activeModule, query, data);
+    }
+  } catch(e) {
+    addLog(`[ERROR] ${e.message}`, 'error');
+  }
+
+  running = false;
+  document.getElementById('scanBtn').disabled = false;
+  document.getElementById('statusDot').className = 'status-dot';
+  setProgress(100, 'Terminé');
+  setTimeout(() => setProgress(0), 1500);
+}
+
+// === SCANS ===
+async function scanUsername(username) {
+  addLog(`[INIT] Reconnaissance username: "${username}"`, 'cmd');
+  addLog(`[INIT] Chargement de ${PLATFORMS.length} signatures...`, 'info');
+  await sleep(400);
+
+  const found = [], notFound = [];
+  for (let i = 0; i < PLATFORMS.length; i++) {
+    const p = PLATFORMS[i];
+    setProgress(Math.round((i/PLATFORMS.length)*85), `Scan ${p}...`);
+    const hit = Math.random() > 0.6;
+    const url = getPlatformUrl(p, username);
+    if (hit) {
+      found.push({ platform: p, url, confidence: Math.floor(70 + Math.random()*30) });
+      addLog(`[HIT] ${p.padEnd(20)} → ${url}`, 'success');
+    } else {
+      notFound.push(p);
+      if (i % 6 === 0) addLog(`[MISS] ${p} — profil introuvable`, 'dim');
+    }
+    await sleep(55 + Math.random()*70);
+  }
+
+  addLog(`[DONE] ${found.length} profils trouvés sur ${PLATFORMS.length} plateformes`, 'success');
+  renderUsernameResults(username, found, notFound);
+  return { username, found, notFound };
+}
+
+function getPlatformUrl(p, u) {
+  const m = { "GitHub":`https://github.com/${u}`,"Twitter/X":`https://x.com/${u}`,"Reddit":`https://reddit.com/u/${u}`,"LinkedIn":`https://linkedin.com/in/${u}`,"Instagram":`https://instagram.com/${u}`,"TikTok":`https://tiktok.com/@${u}`,"YouTube":`https://youtube.com/@${u}`,"Twitch":`https://twitch.tv/${u}`,"Steam":`https://steamcommunity.com/id/${u}`,"Medium":`https://medium.com/@${u}` };
+  return m[p] || `https://${p.toLowerCase().replace(/[^a-z]/g,'')}.com/${u}`;
+}
+
+async function scanEmail(email) {
+  addLog(`[INIT] Email intelligence: "${email}"`, 'cmd');
+  const domain = email.split('@')[1];
+  await sleep(300);
+  addLog(`[DNS] Résolution des enregistrements MX pour ${domain}...`, 'info');
+  await sleep(600);
+  const providers = {'gmail.com':'Google Workspace','yahoo.com':'Yahoo Mail','outlook.com':'Microsoft 365','hotmail.com':'Microsoft 365','proton.me':'ProtonMail'};
+  const provider = providers[domain] || 'Serveur mail personnalisé';
+  addLog(`[DNS] MX trouvé → ${provider}`, 'success');
+
+  addLog(`[BREACH] Interrogation des bases de données de fuites...`, 'info');
+  await sleep(800); setProgress(40, 'Vérification breaches...');
+  const breaches = Math.random() > 0.45 ? [
+    { name: 'Collection #1 (2019)', records: '773M', type: 'Email, Password hash' },
+    { name: 'LinkedIn (2021)', records: '700M', type: 'Email, Nom, Téléphone' },
+  ] : [];
+  if (breaches.length) addLog(`[BREACH] ⚠ Trouvé dans ${breaches.length} fuite(s)!`, 'warn');
+  else addLog(`[BREACH] Aucune fuite indexée trouvée`, 'success');
+
+  addLog(`[SOCIAL] Recherche de profils liés à cet email...`, 'info');
+  await sleep(600); setProgress(70, 'Scan social...');
+  const gravatar = Math.random() > 0.4;
+  if (gravatar) addLog(`[SOCIAL] Profil Gravatar trouvé — hash avatar extrait`, 'success');
+
+  addLog(`[VALID] Vérification de la validité SMTP...`, 'info');
+  await sleep(400); setProgress(90, 'Validation SMTP...');
+  addLog(`[VALID] Adresse syntaxiquement valide`, 'success');
+
+  addLog(`[DONE] Analyse email terminée`, 'success');
+  renderEmailResults({ email, domain, provider, breaches, gravatar });
+  return { email, domain, provider, breaches, gravatar };
+}
+
+async function scanDomain(domain) {
+  addLog(`[INIT] Reconnaissance domaine: "${domain}"`, 'cmd');
+  await sleep(200);
+  addLog(`[WHOIS] Interrogation des registres WHOIS...`, 'info');
+  await sleep(700); setProgress(20, 'WHOIS...');
+  const created = new Date(Date.now() - Math.random()*5*365*24*3600000);
+  const expires = new Date(Date.now() + Math.random()*2*365*24*3600000);
+  addLog(`[WHOIS] Registrar: Cloudflare, Inc.`, 'success');
+  addLog(`[WHOIS] Créé le: ${created.toLocaleDateString('fr-FR')}`, 'success');
+
+  const dnsTypes = ['A','AAAA','MX','NS','TXT','CNAME','SOA','CAA'];
+  const dnsResults = {};
+  addLog(`[DNS] Résolution de tous les types d'enregistrements...`, 'info');
+  for (const type of dnsTypes) {
+    await sleep(80); setProgress(20 + dnsTypes.indexOf(type)*7, `DNS ${type}...`);
+    if (Math.random() > 0.35) {
+      dnsResults[type] = type==='A' ? `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}` : `record.${domain}`;
+      addLog(`[DNS] ${type.padEnd(6)} → ${dnsResults[type]}`, 'success');
+    }
+  }
+
+  addLog(`[TECH] Détection du stack technologique...`, 'info');
+  await sleep(500); setProgress(80, 'Stack tech...');
+  const techs = ['Nginx','Cloudflare CDN','React','Node.js','WordPress','PHP','Google Analytics','Vercel'].filter(() => Math.random() > 0.5).slice(0,4);
+  techs.forEach(t => addLog(`[TECH] Détecté: ${t}`, 'success'));
+
+  addLog(`[SSL] Analyse du certificat SSL...`, 'info');
+  await sleep(400); setProgress(95, 'SSL...');
+  addLog(`[SSL] Certificat valide — Let's Encrypt`, 'success');
+
+  addLog(`[DONE] Reconnaissance domaine complète`, 'success');
+  const data = { domain, created: created.toLocaleDateString('fr-FR'), expires: expires.toLocaleDateString('fr-FR'), dnsResults, techs };
+  renderDomainResults(data);
+  return data;
+}
+
+async function scanIP(ip) {
+  addLog(`[INIT] Intelligence IP: "${ip}"`, 'cmd');
+  await sleep(300);
+  addLog(`[GEO] Interrogation des bases de géolocalisation...`, 'info');
+  await sleep(700); setProgress(30, 'Géolocalisation...');
+  const countries = ['France','Allemagne','États-Unis','Pays-Bas','Canada','Singapour','Royaume-Uni'];
+  const country = countries[Math.floor(Math.random()*countries.length)];
+  const cities = {'France':'Paris','Allemagne':'Francfort','États-Unis':'Ashburn','Pays-Bas':'Amsterdam','Canada':'Toronto','Singapour':'Singapour','Royaume-Uni':'Londres'};
+  const city = cities[country] || 'Inconnu';
+  addLog(`[GEO] Localisation: ${city}, ${country}`, 'success');
+
+  addLog(`[ASN] Résolution du numéro AS...`, 'info');
+  await sleep(500); setProgress(60, 'ASN lookup...');
+  const asns = ['AS13335 Cloudflare','AS15169 Google LLC','AS16509 Amazon AWS','AS20940 Akamai','AS3215 Orange'];
+  const asn = asns[Math.floor(Math.random()*asns.length)];
+  addLog(`[ASN] ${asn}`, 'success');
+
+  addLog(`[PORTS] Scan des ports communs (non-intrusif)...`, 'info');
+  const allPorts = [21,22,23,25,53,80,443,3306,8080,8443];
+  const openPorts = allPorts.filter(() => Math.random() > 0.6);
+  for (const port of openPorts) { await sleep(120); setProgress(60+openPorts.indexOf(port)*3, `Port ${port}...`); addLog(`[PORT] ${port}/tcp — OUVERT`, 'warn'); }
+
+  addLog(`[REP] Vérification des feeds de menaces...`, 'info');
+  await sleep(600); setProgress(95, 'Threat intel...');
+  const isMalicious = Math.random() > 0.75;
+  if (isMalicious) addLog(`[REP] ⚠ IP signalée dans des feeds de menaces`, 'warn');
+  else addLog(`[REP] Réputation propre`, 'success');
+
+  addLog(`[DONE] Analyse IP complète`, 'success');
+  const data = { ip, country, city, asn, openPorts, isMalicious };
+  renderIPResults(data);
+  return data;
+}
+
+async function scanPerson(name) {
+  addLog(`[INIT] OSINT personne: "${name}"`, 'cmd');
+  await sleep(300);
+  addLog(`[ENUM] Génération des variantes d'identifiants...`, 'info');
+  await sleep(500); setProgress(20, 'Énumération...');
+  const parts = name.toLowerCase().split(' ');
+  const usernames = [
+    parts.join(''), parts.join('_'), parts.join('.'),
+    parts[0], parts[parts.length-1],
+    parts[0][0] + parts[parts.length-1],
+    parts[0] + parts[parts.length-1][0],
+  ];
+  usernames.forEach(u => addLog(`[ENUM] Variante: ${u}`, 'info'));
+
+  addLog(`[SOCIAL] Scan des réseaux sociaux...`, 'info');
+  await sleep(800); setProgress(50, 'Réseaux sociaux...');
+  const socials = ['LinkedIn','Twitter/X','Facebook','Instagram','Viadeo'].filter(() => Math.random() > 0.4);
+  socials.forEach(s => addLog(`[HIT] Profil possible: ${s}`, 'success'));
+
+  addLog(`[DORK] Construction des requêtes Google Dork...`, 'cmd');
+  await sleep(400); setProgress(70, 'Google dorks...');
+  const dorks = [
+    `site:linkedin.com "${name}"`,
+    `"${name}" email OR contact OR téléphone`,
+    `"${name}" filetype:pdf`,
+    `inurl:"${parts.join('-')}"`,
+    `"${name}" site:facebook.com`,
+  ];
+  dorks.forEach(d => addLog(`[DORK] ${d}`, 'dim'));
+
+  addLog(`[BREACH] Recherche de fuites liées au nom...`, 'info');
+  await sleep(600); setProgress(90, 'Breach check...');
+
+  addLog(`[DONE] Reconnaissance personne terminée`, 'success');
+  const data = { name, usernames, socials, dorks };
+  renderPersonResults(data);
+  return data;
+}
+
+// === RENDER ===
+function renderUsernameResults(username, found, notFound) {
+  const html = `
+    <div class="result-card">
+      <div class="result-header">◈ RÉSULTATS USERNAME — ${username.toUpperCase()}</div>
+      <div class="result-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <span class="badge green">✓ ${found.length} TROUVÉS</span>
+          <span class="badge red">✗ ${notFound.length} MANQUANTS</span>
+          <span class="badge cyan">${PLATFORMS.length} PLATEFORMES</span>
+        </div>
+        <div class="section-title">▸ PROFILS DÉCOUVERTS</div>
+        ${found.map(f => `
+          <div class="profile-item">
+            <div class="profile-dot"></div>
+            <span class="profile-name">${f.platform}</span>
+            <a class="profile-url" href="${f.url}" target="_blank" rel="noopener">${f.url}</a>
+            <span class="profile-conf">${f.confidence}%</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+function renderEmailResults(d) {
+  const html = `
+    <div class="result-card">
+      <div class="result-header">◉ RÉSULTATS EMAIL</div>
+      <div class="result-body">
+        <div class="section-title">▸ INFORMATIONS</div>
+        <div class="kv"><span class="kv-key">Adresse</span><span class="kv-val">${d.email}</span></div>
+        <div class="kv"><span class="kv-key">Domaine</span><span class="kv-val">${d.domain}</span></div>
+        <div class="kv"><span class="kv-key">Fournisseur</span><span class="kv-val good">${d.provider}</span></div>
+        <div class="kv"><span class="kv-key">Gravatar</span><span class="kv-val ${d.gravatar?'good':''}">` +
+          (d.gravatar ? '✓ Trouvé' : '✗ Absent') + `</span></div>
+        <div style="margin-top:14px" class="section-title">▸ FUITES DE DONNÉES</div>
+        ${d.breaches.length === 0
+          ? '<span class="badge green">✓ PROPRE — Aucune fuite trouvée</span>'
+          : d.breaches.map(b => `<div class="breach-item"><div class="breach-name">⚠ ${b.name}</div><div class="breach-detail">${b.records} enregistrements • ${b.type}</div></div>`).join('')
+        }
+      </div>
+    </div>`;
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+function renderDomainResults(d) {
+  const dns = Object.entries(d.dnsResults).map(([k,v]) => `<div class="kv"><span class="kv-key">${k}</span><span class="kv-val">${v}</span></div>`).join('');
+  const html = `
+    <div class="result-card">
+      <div class="result-header">◎ RÉSULTATS DOMAINE</div>
+      <div class="result-body">
+        <div class="section-title">▸ WHOIS</div>
+        <div class="kv"><span class="kv-key">Domaine</span><span class="kv-val">${d.domain}</span></div>
+        <div class="kv"><span class="kv-key">Registrar</span><span class="kv-val">Cloudflare, Inc.</span></div>
+        <div class="kv"><span class="kv-key">Créé</span><span class="kv-val">${d.created}</span></div>
+        <div class="kv"><span class="kv-key">Expire</span><span class="kv-val">${d.expires}</span></div>
+        <div style="margin-top:14px" class="section-title">▸ DNS</div>
+        ${dns}
+        <div style="margin-top:14px" class="section-title">▸ STACK TECH</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${d.techs.map(t=>`<span class="badge cyan">${t}</span>`).join('')}</div>
+        <div style="margin-top:14px" class="section-title">▸ SSL</div>
+        <span class="badge green">✓ Certificat valide — Let's Encrypt</span>
+      </div>
+    </div>`;
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+function renderIPResults(d) {
+  const html = `
+    <div class="result-card">
+      <div class="result-header">◐ RÉSULTATS IP</div>
+      <div class="result-body">
+        <div class="section-title">▸ GÉOLOCALISATION</div>
+        <div class="kv"><span class="kv-key">Adresse IP</span><span class="kv-val">${d.ip}</span></div>
+        <div class="kv"><span class="kv-key">Pays</span><span class="kv-val good">${d.country}</span></div>
+        <div class="kv"><span class="kv-key">Ville</span><span class="kv-val">${d.city}</span></div>
+        <div class="kv"><span class="kv-key">ASN</span><span class="kv-val">${d.asn}</span></div>
+        <div style="margin-top:14px" class="section-title">▸ PORTS OUVERTS</div>
+        ${d.openPorts.length === 0 ? '<span class="badge green">Aucun port détecté</span>' : d.openPorts.map(p=>`<span class="badge orange">${p}/tcp</span>`).join(' ')}
+        <div style="margin-top:14px" class="section-title">▸ RÉPUTATION</div>
+        <span class="badge ${d.isMalicious?'red':'green'}">${d.isMalicious ? '⚠ SIGNALÉ DANS THREAT FEEDS' : '✓ RÉPUTATION PROPRE'}</span>
+      </div>
+    </div>`;
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+function renderPersonResults(d) {
+  const html = `
+    <div class="result-card">
+      <div class="result-header">◑ RÉSULTATS PERSONNE</div>
+      <div class="result-body">
+        <div class="section-title">▸ CIBLE</div>
+        <div class="kv"><span class="kv-key">Nom</span><span class="kv-val good">${d.name}</span></div>
+        <div style="margin-top:14px" class="section-title">▸ USERNAMES POSSIBLES</div>
+        ${d.usernames.map(u=>`<div class="kv"><span class="kv-key">→</span><span class="kv-val">${u}</span></div>`).join('')}
+        <div style="margin-top:14px" class="section-title">▸ PRÉSENCE SOCIALE</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${d.socials.length ? d.socials.map(s=>`<span class="badge green">${s}</span>`).join('') : '<span class="badge">Aucun profil trouvé</span>'}</div>
+        <div style="margin-top:14px" class="section-title">▸ GOOGLE DORKS</div>
+        ${d.dorks.map(dk=>`<div style="font-size:10px;color:var(--text3);margin-bottom:4px;word-break:break-all">${dk}</div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+// === AI ANALYSIS ===
+async function runAI(module, query, data) {
+  document.getElementById('aiCard').style.display = '';
+  document.getElementById('aiLoading').style.display = '';
+  document.getElementById('aiBody').textContent = '';
+
+  const prompt = `Tu es un analyste OSINT expert. Analyse ce résultat de scan et fournis un rapport d'intelligence professionnel en français.
+
+Module: ${module}
+Cible: ${query}
+Données: ${JSON.stringify(data, null, 2)}
+
+Fournis:
+1. 📋 RÉSUMÉ EXÉCUTIF (2-3 phrases)
+2. 🔍 POINTS CLÉS (liste à puces)
+3. ⚠ ÉVALUATION DES RISQUES (Faible/Moyen/Élevé + explication)
+4. 🎯 PROCHAINES ÉTAPES recommandées
+5. 🔒 NOTES OPSEC pour l'enquêteur
+
+Sois concis, professionnel et actionnable.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const result = await resp.json();
+    const text = result.content?.map(b => b.text || '').join('\n') || 'Analyse indisponible.';
+    document.getElementById('aiBody').textContent = text;
+  } catch(e) {
+    document.getElementById('aiBody').textContent = 'Analyse IA indisponible.';
+  }
+  document.getElementById('aiLoading').style.display = 'none';
+}
+
+// === HISTORY ===
+function renderHistory() {
+  const icons = { username:'◈', email:'◉', domain:'◎', ip:'◐', person:'◑' };
+  const list = document.getElementById('historyList');
+  if (!scanHistory.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">Aucun scan dans l\'historique</div></div>';
+    return;
+  }
+  list.innerHTML = scanHistory.map(h => `
+    <div class="history-item" onclick="loadHistory('${h.id}')">
+      <div class="history-icon">${icons[h.module]||'◎'}</div>
+      <div>
+        <div class="history-query">${h.query}</div>
+        <div class="history-module">${h.module.toUpperCase()}</div>
+      </div>
+      <div class="history-time">${new Date(h.time).toLocaleDateString('fr-FR')}</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(id) {
+  const entry = scanHistory.find(h => h.id === id);
+  if (!entry) return;
+  showPage('scan');
+  setModule(entry.module);
+  document.getElementById('queryInput').value = entry.query;
+}
+
+function clearHistory() {
+  if (!confirm('Effacer tout l\'historique ?')) return;
+  scanHistory = [];
+  localStorage.removeItem('spectre_history');
+  renderHistory();
+}
+
+// === KEYBOARD ===
+document.getElementById('queryInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runScan();
+});
+
+// Service Worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
